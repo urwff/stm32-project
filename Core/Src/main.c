@@ -24,6 +24,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "i2c.h"
+#include "spi.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -32,6 +33,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "w24c02.h"
+#include "usart_test.h"
+#include "w25q32_test.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,6 +55,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+static volatile TestStatus g_usart_loopback_result = TEST_STATUS_NOT_RUN;
+static volatile TestStatus g_usart_blocking_result = TEST_STATUS_NOT_RUN;
 
 /* USER CODE END PV */
 
@@ -73,12 +78,38 @@ static void UART_Print(const char *msg) {
   HAL_UART_Transmit(&huart1, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
 }
 
+static void FirmwareAssert(uint8_t condition, const char *msg) {
+  if (!condition) {
+    UART_Print("ASSERT FAILED: ");
+    UART_Print(msg);
+    UART_Print("\r\n");
+    Error_Handler();
+  }
+}
+
+static const char *TestStatusToString(TestStatus status) {
+  switch (status) {
+  case TEST_STATUS_PASS:
+    return "PASS";
+  case TEST_STATUS_FAIL:
+    return "FAIL";
+  case TEST_STATUS_NOT_RUN:
+  default:
+    return "NOT_RUN";
+  }
+}
+
+static void LogTestStatus(const char *name, TestStatus status) {
+  char buf[64];
+  sprintf(buf, "%s: %s\r\n", name, TestStatusToString(status));
+  UART_Print(buf);
+}
+
 /* USER CODE END 0 */
 
 /**
-  * @brief  应用程序入口点 - 主函数
-  * @retval int 程序返回值（实际不会返回）
-  * @note   本函数执行系统初始化和W24C02 EEPROM测试流程
+  * @brief  The application entry point.
+  * @retval int
   */
 int main(void)
 {
@@ -107,120 +138,19 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   MX_I2C2_Init();
+  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
-  
-  // W24C02 EEPROM 测试代码
-  uint8_t writeData = 0x5A;      // 测试写入的单字节数据
-  uint8_t readData = 0;           // 读取的单字节数据
-  uint8_t writeBuffer[8] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88};  // 多字节写入测试数据
-  uint8_t readBuffer[8] = {0};    // 多字节读取缓冲区
-  char msgBuf[64];                // 串口消息缓冲区
-  uint8_t testPass = 1;           // 测试结果标志
-  
-  // 初始化 W24C02 (使用寄存器版本)
-  register_W24C02_Init();
+
+  // 等待W25Q32芯片上电稳定
   HAL_Delay(100);
-  
-  // 发送测试开始信息
-  sprintf(msgBuf, "\r\n=== W24C02 EEPROM Test Start ===\r\n");
-  UART_Print(msgBuf);
-  
-  // 测试1: 单字节写入和读取
-  sprintf(msgBuf, "\r\n[Test 1] Single Byte Write/Read\r\n");
-  UART_Print(msgBuf);
-  
-  register_W24C02_WriteByte(0x00, writeData);  // 在地址0x00写入0x5A
-  HAL_Delay(10);
-  readData = register_W24C02_ReadByte(0x00);   // 从地址0x00读取
-  
-  sprintf(msgBuf, "Write: 0x%02X, Read: 0x%02X ", writeData, readData);
-  UART_Print(msgBuf);
-  
-  if (readData == writeData) {
-    sprintf(msgBuf, "[PASS]\r\n");
-  } else {
-    sprintf(msgBuf, "[FAIL]\r\n");
-    testPass = 0;
-  }
-  UART_Print(msgBuf);
-  
-  // 测试2: 多字节写入和读取 (页写入)
-  sprintf(msgBuf, "\r\n[Test 2] Multi-Byte Write/Read (Page)\r\n");
-  UART_Print(msgBuf);
-  
-  register_W24C02_WriteBytes(0x10, writeBuffer, 8);  // 从地址0x10开始写入8字节
-  HAL_Delay(10);
-  register_W24C02_ReadBytes(0x10, readBuffer, 8);    // 从地址0x10开始读取8字节
-  
-  sprintf(msgBuf, "Write: ");
-  UART_Print(msgBuf);
-  for (int i = 0; i < 8; i++) {
-    sprintf(msgBuf, "0x%02X ", writeBuffer[i]);
-    UART_Print(msgBuf);
-  }
-  
-  sprintf(msgBuf, "\r\nRead:  ");
-  UART_Print(msgBuf);
-  for (int i = 0; i < 8; i++) {
-    sprintf(msgBuf, "0x%02X ", readBuffer[i]);
-    UART_Print(msgBuf);
-  }
-  
-  // 验证多字节读写
-  uint8_t multiBytePass = 1;
-  for (int i = 0; i < 8; i++) {
-    if (writeBuffer[i] != readBuffer[i]) {
-      multiBytePass = 0;
-      testPass = 0;
-      break;
-    }
-  }
-  
-  if (multiBytePass) {
-    sprintf(msgBuf, " [PASS]\r\n");
-  } else {
-    sprintf(msgBuf, " [FAIL]\r\n");
-  }
-  UART_Print(msgBuf);
-  
-  // 测试3: 数据持久性测试 - 写入不同值再读取
-  sprintf(msgBuf, "\r\n[Test 3] Data Persistence Test\r\n");
-  UART_Print(msgBuf);
-  
-  register_W24C02_WriteByte(0x20, 0xAB);
-  HAL_Delay(10);
-  register_W24C02_WriteByte(0x21, 0xCD);
-  HAL_Delay(10);
-  
-  uint8_t val1 = register_W24C02_ReadByte(0x20);
-  uint8_t val2 = register_W24C02_ReadByte(0x21);
-  
-  sprintf(msgBuf, "Addr 0x20: Write 0xAB, Read 0x%02X\r\n", val1);
-  UART_Print(msgBuf);
-  sprintf(msgBuf, "Addr 0x21: Write 0xCD, Read 0x%02X\r\n", val2);
-  UART_Print(msgBuf);
-  
-  if (val1 == 0xAB && val2 == 0xCD) {
-    sprintf(msgBuf, "[PASS]\r\n");
-  } else {
-    sprintf(msgBuf, "[FAIL]\r\n");
-    testPass = 0;
-  }
-  UART_Print(msgBuf);
-  
-  // 测试总结
-  sprintf(msgBuf, "\r\n=== Test Summary ===\r\n");
-  UART_Print(msgBuf);
-  
-  if (testPass) {
-    sprintf(msgBuf, "All tests PASSED!\r\n");
-  } else {
-    sprintf(msgBuf, "Some tests FAILED!\r\n");
-  }
-  UART_Print(msgBuf);
-  
-  sprintf(msgBuf, "=== W24C02 EEPROM Test End ===\r\n\r\n");
-  UART_Print(msgBuf);
+
+  printf("\r\n系统初始化完成\r\n");
+  printf("开始W25Q32 Flash测试...\r\n\r\n");
+
+  // 运行W25Q32快速测试，验证基本功能
+  W25Q32_RunQuickTest();
+
+  printf("测试完成！\r\n");
 
   /* USER CODE END 2 */
 
@@ -235,59 +165,71 @@ int main(void)
 }
 
 /**
-  * @brief  系统时钟配置函数
+  * @brief System Clock Configuration
   * @retval None
-  * @note   配置系统时钟为72MHz，使用外部高速晶振(HSE)和PLL
-  *         - HSE: 8MHz外部晶振
-  *         - PLL倍频: 9倍 (8MHz * 9 = 72MHz)
-  *         - AHB分频: 2分频 (72MHz / 2 = 36MHz)
-  *         - APB1和APB2: 不分频 (36MHz)
   */
 void SystemClock_Config(void)
 {
-  RCC_OscInitTypeDef RCC_OscInitStruct = {0};  // RCC振荡器初始化结构体
-  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};  // RCC时钟初始化结构体
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-  /** 根据RCC_OscInitTypeDef结构体中指定的参数初始化RCC振荡器
-  * 配置外部高速晶振(HSE)和锁相环(PLL)
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;  // 使用HSE振荡器
-  RCC_OscInitStruct.HSEState = RCC_HSE_ON;                    // 启用HSE
-  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;     // HSE预分频为1
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;                    // 启用HSI(内部振荡器)
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;               // 启用PLL
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;       // PLL时钟源为HSE
-  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;              // PLL倍频系数为9
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)       // 配置振荡器
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
-    Error_Handler();  // 配置失败则进入错误处理
+    Error_Handler();
   }
 
-  /** 初始化CPU、AHB和APB总线时钟
-  * 配置系统时钟源和各总线的分频系数
+  /** Initializes the CPU, AHB and APB buses clocks
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;  // 配置所有时钟类型
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;              // 系统时钟源为PLL
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV2;                     // AHB时钟2分频
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;                      // APB1时钟不分频
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;                      // APB2时钟不分频
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV2;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK) // 配置时钟和Flash延迟
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
-    Error_Handler();  // 配置失败则进入错误处理
+    Error_Handler();
   }
 }
 
 /* USER CODE BEGIN 4 */
 
+#ifdef __GNUC__
+/* With GCC, small printf (option LD Linker->Libraries->Small printf
+   set to 'Yes') calls __io_putchar() */
+int __io_putchar(int ch) {
+    HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
+    return ch;
+}
+
+int _write(int file, char *ptr, int len) {
+    HAL_UART_Transmit(&huart1, (uint8_t *)ptr, len, HAL_MAX_DELAY);
+    return len;
+}
+#else
+/* Keil编译器 */
+int fputc(int ch, FILE *f) {
+    HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, HAL_MAX_DELAY);
+    return ch;
+}
+#endif
+
 /* USER CODE END 4 */
 
 /**
-  * @brief  错误处理函数 - 当发生错误时执行此函数
+  * @brief  This function is executed in case of error occurrence.
   * @retval None
-  * @note   禁用所有中断并进入无限循环，用于调试错误情况
-  *         在实际应用中可以添加错误指示(如LED闪烁)或系统复位
   */
 void Error_Handler(void)
 {
@@ -298,15 +240,13 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-
 #ifdef USE_FULL_ASSERT
 /**
-  * @brief  断言失败报告函数 - 报告发生断言错误的源文件名和行号
-  * @param  file: 指向源文件名的指针
-  * @param  line: 断言错误发生的源代码行号
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
   * @retval None
-  * @note   仅在启用USE_FULL_ASSERT宏时编译此函数
-  *         用于调试时定位参数错误的具体位置
   */
 void assert_failed(uint8_t *file, uint32_t line)
 {

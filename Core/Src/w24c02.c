@@ -449,7 +449,7 @@ void register_W24C02_ReadBytes(uint8_t innerAddr, uint8_t *bytes, uint8_t len) {
   // 循环读取多个数据字节
   for (uint8_t i = 0; i < len; i++) {
     /* 读取第i个数据字节 */
-    uint8_t timeout = 0xFFFF; // 为每个字节设置独立的超时计数器
+    uint16_t timeout = 0xFFFF; // 为每个字节设置独立的超时计数器
 
     /* 等待数据接收完成 */
     while (!(I2C2->SR1 & I2C_SR1_RXNE) && timeout) {

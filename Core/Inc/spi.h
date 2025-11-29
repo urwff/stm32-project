@@ -1,9 +1,9 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file    usart.h
+  * @file    spi.h
   * @brief   This file contains all the function prototypes for
-  *          the usart.c file
+  *          the spi.c file
   ******************************************************************************
   * @attention
   *
@@ -18,8 +18,8 @@
   */
 /* USER CODE END Header */
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __USART_H__
-#define __USART_H__
+#ifndef __SPI_H__
+#define __SPI_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,48 +30,28 @@ extern "C" {
 
 /* USER CODE BEGIN Includes */
 
-#include "stdio.h"
-
-#include "stm32f1xx.h"
-#include <sys/_intsup.h>
-
 /* USER CODE END Includes */
 
-extern UART_HandleTypeDef huart1;
+extern SPI_HandleTypeDef hspi1;
 
 /* USER CODE BEGIN Private defines */
 
-#define ACK 0
-#define NACK 1
-
-#define OK 1
-#define FAIL 0
-
-
 /* USER CODE END Private defines */
 
-void MX_USART1_UART_Init(void);
+void MX_SPI1_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-void Driver_USART1_Init(void);
-
-void Driver_USART1_SendChar(char byte);
-
-void Driver_USART1_SendString(uint8_t *str, uint16_t len);
-
-uint8_t Driver_USART1_ReceiveChar(void);
-
-void Driver_USART1_ReceiveString(uint8_t buff[], uint8_t *len);
-
-extern uint8_t g_usart_rx_buffer[100];
-extern volatile uint8_t g_usart_rx_len;
-extern volatile uint8_t g_usart_message_ready;
-
+void Hal_SPI_Start(void);
+void Hal_SPI_Stop(void);
+uint8_t Hal_SPI_SwapByte(uint8_t byte);
+void Register_SPI_Start(void);
+void Register_SPI_Stop(void);
+uint8_t Register_SPI_SwapByte(uint8_t byte);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __USART_H__ */
+#endif /* __SPI_H__ */
 

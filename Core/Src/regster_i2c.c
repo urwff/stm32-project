@@ -1,5 +1,5 @@
 /**
- * @file    my_i2c.c
+ * @file    regster_i2c.c
  * @brief   STM32F103 I2C2驱动程序实现
  * @details 本文件实现了STM32F103微控制器的I2C2外设驱动程序，
  *          提供了I2C通信的基本功能，包括初始化、起始/停止条件、
