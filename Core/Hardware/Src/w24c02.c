@@ -23,7 +23,6 @@
 
 #include "w24c02.h"
 #include "i2c.h"
-#include "regster_i2c.h"
 #include "stdio.h"
 #include "stm32f1xx_hal.h"
 

@@ -24,7 +24,7 @@
 #ifndef __INF_W24C02_H
 #define __INF_W24C02_H
 
-#include "regster_i2c.h"
+#include "i2c.h"
 #include "string.h"
 
 /* ========================== 宏定义 ========================== */

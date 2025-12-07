@@ -70,6 +70,7 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern TIM_HandleTypeDef htim6;
 extern UART_HandleTypeDef huart1;
 /* USER CODE BEGIN EV */
 
@@ -79,16 +80,7 @@ extern UART_HandleTypeDef huart1;
 /*           Cortex-M3 Processor Interruption and Exception Handlers          */
 /******************************************************************************/
 /**
-  * @brief  不可屏蔽中断处理程序
-  * @param  无
-  * @retval 无
-  * 
-  * @description
-  * 处理不可屏蔽中断(NMI)，通常由外部NMI引脚或内部时钟安全系统触发
-  * 这是最高优先级的中断，无法被屏蔽
-  * 
-  * @note
-  * 发生NMI通常表示系统出现严重问题，需要立即处理
+  * @brief This function handles Non maskable interrupt.
   */
 void NMI_Handler(void)
 {
@@ -102,27 +94,14 @@ void NMI_Handler(void)
 }
 
 /**
-  * @brief  硬件错误中断处理程序
-  * @param  无
-  * @retval 无
-  * 
-  * @description
-  * 处理硬件错误中断，当处理器遇到无法处理的错误时触发
-  * 常见原因包括：
-  * - 访问无效内存地址
-  * - 执行无效指令
-  * - 堆栈溢出
-  * - 总线错误等
-  * 
-  * @note
-  * 发生HardFault通常表示程序存在严重错误，需要调试分析
+  * @brief This function handles Hard fault interrupt.
   */
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
 
   /* USER CODE END HardFault_IRQn 0 */
-  while (1)  // 进入无限循环，保持系统状态便于调试
+  while (1)
   {
     /* USER CODE BEGIN W1_HardFault_IRQn 0 */
     /* USER CODE END W1_HardFault_IRQn 0 */
@@ -235,32 +214,14 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
-  * @brief  USART1全局中断处理程序
-  * @param  无
-  * @retval 无
-  * 
-  * @description
-  * 处理USART1的所有中断事件，包括：
-  * - 接收数据中断 (RXNE)
-  * - 发送数据中断 (TXE)
-  * - 传输完成中断 (TC)
-  * - 空闲线路检测中断 (IDLE)
-  * - 错误中断等
-  * 
-  * 自定义功能：
-  * - 实现字符串接收缓冲
-  * - 空闲线路检测用于判断消息结束
-  * - 缓冲区溢出保护
-  * 
-  * @note
-  * 先调用HAL库标准处理程序，再执行自定义逻辑
+  * @brief This function handles USART1 global interrupt.
   */
 void USART1_IRQHandler(void)
 {
   /* USER CODE BEGIN USART1_IRQn 0 */
 
   /* USER CODE END USART1_IRQn 0 */
-  HAL_UART_IRQHandler(&huart1);  // 调用HAL库标准中断处理程序
+  HAL_UART_IRQHandler(&huart1);
   /* USER CODE BEGIN USART1_IRQn 1 */
   
   // 检查是否接收到数据 (RXNE标志位)
@@ -284,6 +245,20 @@ void USART1_IRQHandler(void)
     g_usart_message_ready = 1;               // 设置消息接收完成标志
   }
   /* USER CODE END USART1_IRQn 1 */
+}
+
+/**
+  * @brief This function handles TIM6 global interrupt.
+  */
+void TIM6_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM6_IRQn 0 */
+
+  /* USER CODE END TIM6_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim6);
+  /* USER CODE BEGIN TIM6_IRQn 1 */
+
+  /* USER CODE END TIM6_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

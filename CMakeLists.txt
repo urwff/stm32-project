@@ -45,6 +45,7 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Collect user sources
 file(GLOB CORE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Core/test/*.c"
 )
 
 # Avoid picking files already compiled inside the STM32_Drivers target
@@ -60,6 +61,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     Core/Src/Inc
+    Core/Hardware/Inc
+    Core/test/Inc
 )
 
 # Add project symbols (macros)
